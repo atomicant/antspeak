@@ -1,0 +1,137 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * TODO: Write module description
+ *
+ * @author AtomicAnt Ltd., http://atomicant.co.uk
+ *
+ */
+
+/**
+ * Implementation of hook_theme().
+ */
+function antspeak_theme() {
+  return array(
+    'ant_speaks' => array(
+      'variables' => array('msg' => '', 'max' => 40),
+    ),
+  );
+}
+
+/**
+ * Similar to drupal_set_message(), but with ant included :-)
+ *
+ * @param string $msg
+ * @param string $status
+ */
+function antspeak_set_message($msg, $status = 'status') {
+  $ant_speaks = theme('ant_speaks', $msg);
+  drupal_set_message($ant_speaks, $status);
+}
+
+/**
+ * Returns rendered ant with bubble
+ *
+ * @param string $msg
+ *   A message to be printed
+ *
+ * @return string
+ *   Printed message spoken by ant
+ */
+function antspeak_speak($msg) {
+  return theme('ant_speaks', $msg);
+}
+
+/**
+ * Render ant with speak bubble
+ *
+ * @param type $msg
+ *   A message to be printed
+ * @param type $max
+ *   Max characters per line
+ *
+ * @return string
+ *   Rendered ant with speak bubble
+ */
+function theme_ant_speaks($msg, $max = 40) {
+  $ant = '';
+  $lines = antspeak_wordwrap($msg, $max, 3);
+  $len = max(array_map('drupal_strlen', $lines));
+  if ($len) {
+    $bubble_left = $bubble_right = "|";
+    // set different bubble borders for one-line speak-bubbles
+    if (count($lines) == 1) {
+      $bubble_left = "<";
+      $bubble_right = ">";
+    }
+    foreach($lines as &$line) {
+      $line = $bubble_left . mb_str_pad($line, $len + 4, ' ', STR_PAD_BOTH) . $bubble_right;
+    }
+    // top and bottom bubble line
+    array_unshift($lines, '.' . str_repeat('-', $len + 4) . '.');
+    $lines[] = "'" . str_repeat('-', $len + 4) . "'";
+    // pad lines in array to fixed 5 items (prevents PHP notices)
+    array_pad($lines, 4, '');
+    $ant .= "<pre style=\"color:orange;line-height:100%\">";
+    $ant .= "           $lines[0]\n";
+    $ant .= "       \/  $lines[1]\n";
+    $ant .= " _  _  @@ /$lines[2]\n";
+    $ant .= "(_)(_)(_)  $lines[3]\n";
+    $ant .= "//||||     $lines[4]\n";
+    $ant .= "</pre>";
+  }
+
+  return $ant;
+}
+
+/**
+ * Returns wrapped text as array - each array item represents one line.
+ * Text is truncated and three dots "..." are added to the last line
+ * if text overlaps defined max number of lines.
+ *
+ * @param string $text
+ *   Text to be wrapped
+ * @param int $max_len
+ *   Maximum length of one line
+ * @param int $max_lines
+ *   Maximum number of lines
+ *
+ * @return array
+ *   Each array item represents one line of wrapped text.
+ */
+function antspeak_wordwrap($text, $max_len = 40, $max_lines = 0) {
+  $lines = array();
+  $text = str_replace(array("\r", "\n", "\t"), ' ', trim($text));
+  $text = preg_replace('/[ ]{2,}/', ' ', $text);
+  $text = html_entity_decode($text);
+  $lines = array_filter(explode('@@@', wordwrap($text, $max_len, "@@@")), 'strlen');
+  if ($max_lines > 0 && count($lines) >= $max_lines) {
+    $last_line = $max_lines - 1;
+    $lines = array_slice($lines, 0, $max_lines);
+    if (strlen($lines[$last_line]) + 3 > $max_len) {
+      $lines[$last_line] = substr($lines[$last_line], 0, strrpos($lines[$last_line], ' '));
+    }
+    $lines[$last_line] .= '...';
+  }
+  return $lines;
+}
+
+if (!function_exists('mb_str_pad')) {
+  /**
+   * Multibyte strpad function for UTF-8 strings
+   *
+   * @see http://www.php.net/manual/en/function.str-pad.php#100088
+   *
+   * @param string $input
+   * @param string $pad_length
+   * @param string $pad_string
+   * @param flag $pad_type
+   * @return string
+   */
+  function mb_str_pad($input, $pad_length, $pad_string = ' ', $pad_type = STR_PAD_RIGHT) {
+    $diff = strlen($input) - mb_strlen($input, 'UTF-8');
+    return str_pad($input, $pad_length + $diff, $pad_string, $pad_type);
+  }
+}
